@@ -1,0 +1,131 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    background: #1a1a2e;
+    font-family: 'Segoe UI', monospace;
+    color: white;
+    padding: 20px;
+    margin: 0;
+}
+
+h1 {
+    font-size: 1.4rem;
+    text-align: center;
+    margin: 0 0 5px;
+}
+
+.sub {
+    text-align: center;
+    font-size: 0.8rem;
+    color: #aaa;
+    margin-bottom: 20px;
+}
+
+.controls {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+button {
+    background: #0f3460;
+    border: none;
+    color: white;
+    padding: 8px 16px;
+    margin: 5px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: monospace;
+    font-weight: bold;
+}
+
+button:hover {
+    background: #1a4a7a;
+}
+
+.dashboard {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.cell {
+    background: #0f0f1a;
+    border-radius: 16px;
+    padding: 12px;
+    border: 1px solid #2a2a4a;
+}
+
+.cell-title {
+    text-align: center;
+    font-size: 1.8rem;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.faces {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.face {
+    background: #1e1e2a;
+    border-radius: 10px;
+    padding: 5px;
+    text-align: center;
+}
+
+.face-label {
+    font-size: 0.7rem;
+    font-weight: bold;
+    background: #000000aa;
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 20px;
+    margin-bottom: 5px;
+}
+
+.grid-2x2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3px;
+    background: #2a2a3a;
+    padding: 3px;
+    border-radius: 6px;
+}
+
+.sticker {
+    aspect-ratio: 1;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: white;
+    text-shadow: 0 0 2px black;
+    transition: 0.05s linear;
+}
+
+.footer {
+    text-align: center;
+    margin-top: 30px;
+    font-size: 0.7rem;
+    color: #88aaff;
+}
+
+@media (max-width: 900px) {
+    .dashboard {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 550px) {
+    .dashboard {
+        grid-template-columns: 1fr;
+    }
+}

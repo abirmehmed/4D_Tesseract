@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>4D Hypercube – Sticker Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <h1>🌀 4D HYPERCUBE (2×2×2×2) – STICKER DASHBOARD 🌀</h1>
+    <div class="sub">8 cells × 6 faces × 4 stickers | Click a move → stickers permute in 4D</div>
+
+    <div class="controls">
+        <button id="moveXWp">🔁 XW+ (4D twist)</button>
+        <button id="resetBtn">🔁 RESET</button>
+        <button id="undoBtn">↩️ UNDO</button>
+    </div>
+
+    <div id="dashboard" class="dashboard"></div>
+    <div class="footer">
+        Each colored square is a sticker. Color = home cell (A red, B orange, C gold, D teal, E green, F blue, G purple, H pink).<br>
+        When you twist in 4D, stickers move across cells and faces – watch how Au(1,1) changes!
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
