@@ -3,25 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>4D Hypercube – Sticker Dashboard</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>4D Hypercube (2×2×2×2) – True Piece‑Based</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { background: #1a1a2e; font-family: 'Segoe UI', monospace; color: white; padding: 20px; margin: 0; }
+        h1 { font-size: 1.4rem; text-align: center; margin: 0 0 5px; }
+        .sub { text-align: center; font-size: 0.8rem; color: #aaa; margin-bottom: 20px; }
+        .controls { text-align: center; margin-bottom: 20px; }
+        button { background: #0f3460; border: none; color: white; padding: 8px 16px; margin: 5px; border-radius: 8px; cursor: pointer; font-family: monospace; font-weight: bold; }
+        button:hover { background: #1a4a7a; }
+        .dashboard { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; max-width: 1400px; margin: 0 auto; }
+        .cell { background: #0f0f1a; border-radius: 16px; padding: 12px; border: 1px solid #2a2a4a; }
+        .cell-title { text-align: center; font-size: 1.8rem; font-weight: bold; margin-bottom: 10px; }
+        .faces { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .face { background: #1e1e2a; border-radius: 10px; padding: 5px; text-align: center; }
+        .face-label { font-size: 0.7rem; font-weight: bold; background: #000000aa; display: inline-block; padding: 2px 6px; border-radius: 20px; margin-bottom: 5px; }
+        .grid-2x2 { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; background: #2a2a3a; padding: 3px; border-radius: 6px; }
+        .sticker { aspect-ratio: 1; border-radius: 4px; transition: 0.05s linear; }
+        .footer { text-align: center; margin-top: 30px; font-size: 0.7rem; color: #88aaff; }
+        @media (max-width: 900px) { .dashboard { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 550px) { .dashboard { grid-template-columns: 1fr; } }
+        .log { background: #0f0f1a; padding: 10px; margin-top: 20px; border-radius: 8px; max-height: 150px; overflow-y: auto; font-size: 0.8rem; font-family: monospace; }
+    </style>
 </head>
 <body>
-    <h1>🌀 4D HYPERCUBE (2×2×2×2) – STICKER DASHBOARD 🌀</h1>
-    <div class="sub">8 cells × 6 faces × 4 stickers | Click a move → stickers permute in 4D</div>
+<h1>🌀 4D HYPERCUBE (2×2×2×2) – TRUE PIECE‑BASED 🌀</h1>
+<div class="sub">16 corner pieces | 4D rotations in XW, YW, ZW planes | click a move → all pieces move</div>
+<div class="controls">
+    <button id="scramble">🎲 Scramble (20 moves)</button>
+    <button id="reset">🔁 Reset</button>
+    <button id="undo">↩️ Undo</button>
+    <br>
+    <button id="moveXWp">XW+</button> <button id="moveXWm">XW-</button>
+    <button id="moveYWp">YW+</button> <button id="moveYWm">YW-</button>
+    <button id="moveZWp">ZW+</button> <button id="moveZWm">ZW-</button>
+</div>
+<div id="dashboard" class="dashboard"></div>
+<div class="log" id="logPanel">📋 Move log will appear here.</div>
+<div class="footer">Each colored square = sticker. Color = piece's home cell. Moves rotate the 4D coordinates of all pieces.</div>
 
-    <div class="controls">
-        <button id="moveXWp">🔁 XW+ (4D twist)</button>
-        <button id="resetBtn">🔁 RESET</button>
-        <button id="undoBtn">↩️ UNDO</button>
-    </div>
-
-    <div id="dashboard" class="dashboard"></div>
-    <div class="footer">
-        Each colored square is a sticker. Color = home cell (A red, B orange, C gold, D teal, E green, F blue, G purple, H pink).<br>
-        When you twist in 4D, stickers move across cells and faces – watch how Au(1,1) changes!
-    </div>
-
-    <script src="js/app.js"></script>
+<script src="hypercube.js"></script>
 </body>
 </html>
