@@ -1,9 +1,6 @@
 // ============================================================
 // 1. CELL DEFINITIONS (each cell is a 3D region in 4D space)
 // ============================================================
-// A cell is defined by fixing ONE coordinate (axis) to ONE value (±1)
-// The other 3 coordinates can vary (±1 each), giving 8 pieces per cell
-
 const CELL_DEFS = {
     'A': { axis: 'w', val: -1, color: '#E63946' },   // W- cell
     'B': { axis: 'x', val:  1, color: '#F4A261' },   // X+ cell
@@ -18,7 +15,6 @@ const CELL_DEFS = {
 const CELLS = Object.keys(CELL_DEFS);
 const FACES = ['u','v','w','x','y','z'];
 
-// Map face names to axis directions (for the 3D cube faces)
 const FACE_AXIS = {
     'u': { axis: 'y', val:  1 },  // +Y face
     'v': { axis: 'y', val: -1 },  // -Y face
@@ -29,12 +25,15 @@ const FACE_AXIS = {
 };
 
 // ============================================================
-// 2. PIECES: 16 corners of the tesseract
+// 2. PIECES: 80 visible pieces of 3×3×3×3
 // ============================================================
-// Each piece has:
-//   - homeCoord: its original position (x,y,z,w) where each is ±1
-//   - currentCoord: where it is now after moves
-//   - homeCell: which cell it "belongs to" (based on homeCoord)
+// Coordinates: x,y,z,w ∈ {-1, 0, 1}
+// Excluding (0,0,0,0) which is the hidden hypercenter
+// Piece types:
+//   - Corners: 16 pieces (no zeros) - 4 stickers each
+//   - Edges: 32 pieces (one zero) - 3 stickers each
+//   - Face centers: 24 pieces (two zeros) - 2 stickers each
+//   - Cell centers: 8 pieces (three zeros) - 1 sticker each
 
 let pieces = [];
 let moveHistory = [];
@@ -42,35 +41,59 @@ let moveLog = [];
 
 function initPieces() {
     pieces = [];
-    const signs = [-1, 1];
+    const coords = [-1, 0, 1];
     
-    for (let x of signs) {
-        for (let y of signs) {
-            for (let z of signs) {
-                for (let w of signs) {
+    for (let x of coords) {
+        for (let y of coords) {
+            for (let z of coords) {
+                for (let w of coords) {
+                    // Skip the hidden center
+                    if (x === 0 && y === 0 && z === 0 && w === 0) continue;
+                    
                     const homeCoord = { x, y, z, w };
                     
-                    // Determine home cell: which cell's fixed coordinate does this piece match?
-                    // A piece belongs to the cell where its coordinate matches the cell's fixed axis/val
+                    // Determine piece type and home cell
+                    const zeroCount = [x, y, z, w].filter(v => v === 0).length;
+                    let pieceType;
+                    if (zeroCount === 0) pieceType = 'corner';
+                    else if (zeroCount === 1) pieceType = 'edge';
+                    else if (zeroCount === 2) pieceType = 'faceCenter';
+                    else pieceType = 'cellCenter';
+                    
+                    // Determine home cell (which cell does this piece belong to?)
+                    // A piece belongs to multiple cells if it's on a boundary
+                    // For simplicity, we assign it to the cell with highest priority
                     let homeCell = null;
                     for (let [cell, def] of Object.entries(CELL_DEFS)) {
                         const axisIdx = axisToIndex(def.axis);
-                        const coordVal = [homeCoord.x, homeCoord.y, homeCoord.z, homeCoord.w][axisIdx];
+                        const coordVal = [x, y, z, w][axisIdx];
                         if (coordVal === def.val) {
                             homeCell = cell;
                             break;
                         }
                     }
                     
+                    // Determine which stickers this piece has
+                    // A piece has a sticker for each non-zero coordinate
+                    const stickers = [];
+                    if (x !== 0) stickers.push({ axis: 'x', dir: x });
+                    if (y !== 0) stickers.push({ axis: 'y', dir: y });
+                    if (z !== 0) stickers.push({ axis: 'z', dir: z });
+                    if (w !== 0) stickers.push({ axis: 'w', dir: w });
+                    
                     pieces.push({
                         homeCoord: { ...homeCoord },
                         currentCoord: { ...homeCoord },
-                        homeCell: homeCell
+                        homeCell: homeCell,
+                        pieceType: pieceType,
+                        stickers: stickers  // Original sticker orientations
                     });
                 }
             }
         }
     }
+    
+    console.log(`Initialized ${pieces.length} pieces`);
 }
 
 function axisToIndex(axis) {
@@ -80,11 +103,6 @@ function axisToIndex(axis) {
 // ============================================================
 // 3. 4D ROTATION
 // ============================================================
-// Rotating in a 2D plane (e.g., XY) means:
-//   - The two axes in the plane rotate into each other
-//   - The other two axes stay fixed
-//   - This is a 90° rotation: (u, v) → (-v, u) for CCW, (v, -u) for CW
-
 function rotateCoord(coord, plane, dir) {
     const newCoord = { ...coord };
     
@@ -112,22 +130,53 @@ function rotateCoord(coord, plane, dir) {
     return newCoord;
 }
 
+// Rotate sticker orientations
+function rotateSticker(sticker, plane, dir) {
+    const newSticker = { ...sticker };
+    const axes = {
+        'xy': ['x', 'y'],
+        'xz': ['x', 'z'],
+        'xw': ['x', 'w'],
+        'yz': ['y', 'z'],
+        'yw': ['y', 'w'],
+        'zw': ['z', 'w']
+    };
+    
+    if (axes[plane].includes(sticker.axis)) {
+        const [a1, a2] = axes[plane];
+        if (sticker.axis === a1) {
+            newSticker.axis = a2;
+            newSticker.dir = dir === 1 ? -sticker.dir : sticker.dir;
+        } else {
+            newSticker.axis = a1;
+            newSticker.dir = dir === 1 ? sticker.dir : -sticker.dir;
+        }
+    }
+    
+    return newSticker;
+}
+
 function applyMove(plane, dir, moveName) {
     // Save state for undo
-    const snapshot = pieces.map(p => ({ ...p.currentCoord }));
+    const snapshot = pieces.map(p => ({ 
+        currentCoord: { ...p.currentCoord },
+        stickers: p.stickers.map(s => ({ ...s }))
+    }));
     moveHistory.push(snapshot);
     
     // Apply rotation to all pieces
     for (let piece of pieces) {
         piece.currentCoord = rotateCoord(piece.currentCoord, plane, dir);
+        // Also rotate sticker orientations
+        piece.stickers = piece.stickers.map(s => rotateSticker(s, plane, dir));
     }
     
     // Log the move
     moveLog = [`🌀 ${moveName}`];
     let changedCount = 0;
     for (let p of pieces) {
-        const oldCell = getCellFromCoord(p.homeCoord); // Where it started
-        const newCell = getCellFromCoord(p.currentCoord); // Where it is now
+        const oldCell = getCellFromCoord(p.homeCoord);
+        const newCell = getCellFromCoord(p.currentCoord);
         if (oldCell !== newCell && changedCount < 5) {
             moveLog.push(`  ${oldCell}→${newCell}`);
             changedCount++;
@@ -138,8 +187,6 @@ function applyMove(plane, dir, moveName) {
     updateLog();
 }
 
-// Which cell does a coordinate belong to?
-// A piece belongs to the cell whose fixed coordinate it matches
 function getCellFromCoord(coord) {
     for (let [cell, def] of Object.entries(CELL_DEFS)) {
         const axisIdx = axisToIndex(def.axis);
@@ -152,16 +199,8 @@ function getCellFromCoord(coord) {
 }
 
 // ============================================================
-// 4. RENDERING
+// 4. RENDERING (3×3 grids)
 // ============================================================
-// For each cell and face, we need to find the 4 pieces that sit
-// at the corners of that face.
-//
-// A face is defined by:
-//   - The cell it belongs to (which fixes one coordinate)
-//   - The face direction (which fixes another coordinate)
-//   - The remaining 2 coordinates vary (±1 each), giving 4 corners
-
 function renderDashboard() {
     const container = document.getElementById('dashboard');
     container.innerHTML = '';
@@ -177,65 +216,77 @@ function renderDashboard() {
             const faceDef = FACE_AXIS[face];
             const faceDiv = document.createElement('div');
             faceDiv.className = 'face';
-            faceDiv.innerHTML = `<div class="face-label">${face}</div><div class="grid-2x2"></div>`;
-            const gridDiv = faceDiv.querySelector('.grid-2x2');
+            faceDiv.innerHTML = `<div class="face-label">${face}</div><div class="grid-3x3"></div>`;
+            const gridDiv = faceDiv.querySelector('.grid-3x3');
             
-            // Find the 4 corner pieces for this face
+            // For 3×3×3×3, we need to find 9 pieces for each face
             // The cell fixes one coordinate, the face fixes another
-            // The remaining 2 coordinates vary
+            // The remaining 2 coordinates vary: -1, 0, +1
             
             const fixedCoords = {};
-            fixedCoords[cellDef.axis] = cellDef.val;  // Cell's fixed coordinate
-            fixedCoords[faceDef.axis] = faceDef.val;  // Face's fixed coordinate
+            fixedCoords[cellDef.axis] = cellDef.val;
+            fixedCoords[faceDef.axis] = faceDef.val;
             
             // The two varying axes
             const allAxes = ['x', 'y', 'z'];
-            const varyingAxes = allAxes.filter(a => a !== cellDef.axis && a !== faceDef.axis);
+            let varyingAxes = allAxes.filter(a => a !== cellDef.axis && a !== faceDef.axis);
             
-            // If we only have 1 varying axis (because cell and face fix different axes),
-            // we also need to vary the w coordinate if it's not fixed
-            if (varyingAxes.length === 1 && cellDef.axis !== 'w' && faceDef.axis !== 'w') {
+            // If w is not fixed, it varies too
+            if (cellDef.axis !== 'w' && faceDef.axis !== 'w') {
                 varyingAxes.push('w');
             }
             
-            // Generate 4 combinations of ±1 for the varying axes
-            const combos = [];
-            for (let v1 of [-1, 1]) {
-                for (let v2 of [-1, 1]) {
-                    const combo = {};
-                    combo[varyingAxes[0]] = v1;
-                    combo[varyingAxes[1]] = v2;
-                    combos.push(combo);
-                }
-            }
-            
-            // For each combo, build the full coordinate and find the piece
+            // For a 3×3 face, we need 3×3 = 9 combinations
+            const values = [-1, 0, 1];
             const stickers = [];
-            for (let combo of combos) {
-                const coord = { x: 0, y: 0, z: 0, w: 0 };
-                
-                // Set fixed coordinates
-                coord[cellDef.axis] = cellDef.val;
-                coord[faceDef.axis] = faceDef.val;
-                
-                // Set varying coordinates
-                for (let axis of varyingAxes) {
-                    coord[axis] = combo[axis];
+            
+            for (let v1 of values) {
+                for (let v2 of values) {
+                    const coord = { x: 0, y: 0, z: 0, w: 0 };
+                    
+                    // Set fixed coordinates
+                    coord[cellDef.axis] = cellDef.val;
+                    coord[faceDef.axis] = faceDef.val;
+                    
+                    // Set varying coordinates
+                    if (varyingAxes.length >= 1) coord[varyingAxes[0]] = v1;
+                    if (varyingAxes.length >= 2) coord[varyingAxes[1]] = v2;
+                    
+                    // Find the piece at this coordinate
+                    const piece = pieces.find(p =>
+                        p.currentCoord.x === coord.x &&
+                        p.currentCoord.y === coord.y &&
+                        p.currentCoord.z === coord.z &&
+                        p.currentCoord.w === coord.w
+                    );
+                    
+                    // Determine which sticker of this piece is visible on this face
+                    let homeCell = null;
+                    if (piece) {
+                        // The visible sticker is the one pointing in the face direction
+                        const visibleSticker = piece.stickers.find(s => 
+                            s.axis === faceDef.axis && s.dir === faceDef.val
+                        );
+                        if (visibleSticker) {
+                            // Find which cell this sticker belongs to
+                            for (let [c, def] of Object.entries(CELL_DEFS)) {
+                                if (def.axis === visibleSticker.axis && def.val === visibleSticker.dir) {
+                                    homeCell = c;
+                                    break;
+                                }
+                            }
+                        } else {
+                            // Fallback: use piece's home cell
+                            homeCell = piece.homeCell;
+                        }
+                    }
+                    
+                    stickers.push(homeCell);
                 }
-                
-                // Find the piece at this coordinate
-                const piece = pieces.find(p =>
-                    p.currentCoord.x === coord.x &&
-                    p.currentCoord.y === coord.y &&
-                    p.currentCoord.z === coord.z &&
-                    p.currentCoord.w === coord.w
-                );
-                
-                stickers.push(piece ? piece.homeCell : null);
             }
             
-            // Create 2x2 grid
-            for (let i = 0; i < 4; i++) {
+            // Create 3×3 grid
+            for (let i = 0; i < 9; i++) {
                 const sticker = document.createElement('div');
                 sticker.className = 'sticker';
                 const homeCell = stickers[i];
@@ -263,7 +314,10 @@ function updateLog() {
 }
 
 function scramble(numMoves = 20) {
-    const snapshot = pieces.map(p => ({ ...p.currentCoord }));
+    const snapshot = pieces.map(p => ({ 
+        currentCoord: { ...p.currentCoord },
+        stickers: p.stickers.map(s => ({ ...s }))
+    }));
     moveHistory.push(snapshot);
     
     const allMoves = [
@@ -285,6 +339,7 @@ function scramble(numMoves = 20) {
         const m = allMoves[Math.floor(Math.random() * allMoves.length)];
         for (let piece of pieces) {
             piece.currentCoord = rotateCoord(piece.currentCoord, m.plane, m.dir);
+            piece.stickers = piece.stickers.map(s => rotateSticker(s, m.plane, m.dir));
         }
     }
     
@@ -296,6 +351,10 @@ function scramble(numMoves = 20) {
 function reset() {
     for (let piece of pieces) {
         piece.currentCoord = { ...piece.homeCoord };
+        piece.stickers = piece.homeCoord.x !== 0 ? [{ axis: 'x', dir: piece.homeCoord.x }] : [];
+        if (piece.homeCoord.y !== 0) piece.stickers.push({ axis: 'y', dir: piece.homeCoord.y });
+        if (piece.homeCoord.z !== 0) piece.stickers.push({ axis: 'z', dir: piece.homeCoord.z });
+        if (piece.homeCoord.w !== 0) piece.stickers.push({ axis: 'w', dir: piece.homeCoord.w });
     }
     moveHistory = [];
     moveLog = ['🔁 Reset to solved state'];
@@ -308,7 +367,8 @@ function undo() {
     
     const lastSnapshot = moveHistory.pop();
     for (let i = 0; i < pieces.length; i++) {
-        pieces[i].currentCoord = { ...lastSnapshot[i] };
+        pieces[i].currentCoord = { ...lastSnapshot[i].currentCoord };
+        pieces[i].stickers = lastSnapshot[i].stickers.map(s => ({ ...s }));
     }
     
     moveLog = ['↩️ Undid last move'];
