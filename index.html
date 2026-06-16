@@ -3,43 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>4D Hypercube (2×2×2×2) – WORKING VERSION</title>
-    <style>
-        * { box-sizing: border-box; }
-        body { background: #1a1a2e; font-family: 'Segoe UI', monospace; color: white; padding: 20px; margin: 0; }
-        h1 { font-size: 1.4rem; text-align: center; margin: 0 0 5px; }
-        .sub { text-align: center; font-size: 0.8rem; color: #aaa; margin-bottom: 20px; }
-        .controls { text-align: center; margin-bottom: 20px; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
-        button { background: #0f3460; border: none; color: white; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-family: monospace; font-weight: bold; }
-        button:hover { background: #1a4a7a; }
-        .dashboard { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; max-width: 1400px; margin: 0 auto; }
-        .cell { background: #0f0f1a; border-radius: 16px; padding: 12px; border: 1px solid #2a2a4a; }
-        .cell-title { text-align: center; font-size: 1.8rem; font-weight: bold; margin-bottom: 10px; }
-        .faces { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-        .face { background: #1e1e2a; border-radius: 10px; padding: 5px; text-align: center; }
-        .face-label { font-size: 0.7rem; font-weight: bold; background: #000000aa; display: inline-block; padding: 2px 6px; border-radius: 20px; margin-bottom: 5px; }
-        .grid-2x2 { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; background: #2a2a3a; padding: 3px; border-radius: 6px; }
-        .sticker { aspect-ratio: 1; border-radius: 4px; transition: 0.05s linear; }
-        .footer { text-align: center; margin-top: 30px; font-size: 0.7rem; color: #88aaff; }
-        @media (max-width: 900px) { .dashboard { grid-template-columns: repeat(2, 1fr); } }
-        @media (max-width: 550px) { .dashboard { grid-template-columns: 1fr; } }
-        .log { background: #0f0f1a; padding: 10px; margin-top: 20px; border-radius: 8px; max-height: 150px; overflow-y: auto; font-size: 0.8rem; font-family: monospace; }
-        .move-group { display: inline-flex; flex-wrap: wrap; justify-content: center; gap: 6px; background: #16213e; padding: 6px 12px; border-radius: 30px; margin: 4px; }
-    </style>
+    <title>4D Hypercube (3×3×3×3) – Zoomable</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<h1>🌀 4D HYPERCUBE (2×2×2×2) – WORKING VERSION 🌀</h1>
-<div class="sub">16 corner pieces | 6 rotation planes | real 4D geometry</div>
+
+<h1>🌀 4D HYPERCUBE (3×3×3×3) – ZOOMABLE 🌀</h1>
+<div class="sub">80 pieces | 6 rotation planes | click a cell to zoom in</div>
+
 <div class="controls" id="movePanel"></div>
+
 <div class="controls">
     <button id="scrambleBtn">🎲 Scramble (20)</button>
     <button id="resetBtn">🔁 Reset</button>
     <button id="undoBtn">↩️ Undo</button>
 </div>
-<div id="dashboard" class="dashboard"></div>
-<div id="logPanel" class="log">📋 Ready.</div>
-<div class="footer">Color = piece's home cell. Moves rotate 4D coordinates.</div>
 
-<script src="js/hypercube.js"></script>
+<!-- Main grid view -->
+<div id="dashboard" class="dashboard"></div>
+
+<!-- Zoomed view -->
+<div id="zoomedView" class="zoomed-container">
+    <div class="zoomed-main">
+        <div class="zoomed-header">
+            <div class="zoomed-title" id="zoomedTitle">Cell A</div>
+            <button class="back-btn" id="backBtn">← Back to All Cells</button>
+        </div>
+        <div class="cross-layout" id="crossLayout"></div>
+    </div>
+    <div class="sidebar">
+        <div class="sidebar-title">Other Cells</div>
+        <div id="sidebarCells"></div>
+    </div>
+</div>
+
+<div id="logPanel" class="log">📋 Ready. Click any cell to zoom in.</div>
+<div class="footer">Each colored square = sticker. Color = piece's home cell. Moves rotate 4D coordinates.</div>
+
+<script type="module" src="js/main.js"></script>
 </body>
 </html>

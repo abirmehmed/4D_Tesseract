@@ -1,40 +1,32 @@
 // ============================================================
-// 1. CELL DEFINITIONS (each cell is a 3D region in 4D space)
+// 1. CELL DEFINITIONS
 // ============================================================
 const CELL_DEFS = {
-    'A': { axis: 'w', val: -1, color: '#E63946' },   // W- cell
-    'B': { axis: 'x', val:  1, color: '#F4A261' },   // X+ cell
-    'C': { axis: 'y', val:  1, color: '#E9C46A' },   // Y+ cell
-    'D': { axis: 'x', val: -1, color: '#2A9D8F' },   // X- cell
-    'E': { axis: 'z', val:  1, color: '#2E8B57' },   // Z+ cell
-    'F': { axis: 'w', val:  1, color: '#4895EF' },   // W+ cell
-    'G': { axis: 'y', val: -1, color: '#9C27B0' },   // Y- cell
-    'H': { axis: 'z', val: -1, color: '#FF70B8' }    // Z- cell
+    'A': { axis: 'w', val: -1, color: '#E63946' },
+    'B': { axis: 'x', val:  1, color: '#F4A261' },
+    'C': { axis: 'y', val:  1, color: '#E9C46A' },
+    'D': { axis: 'x', val: -1, color: '#2A9D8F' },
+    'E': { axis: 'z', val:  1, color: '#2E8B57' },
+    'F': { axis: 'w', val:  1, color: '#4895EF' },
+    'G': { axis: 'y', val: -1, color: '#9C27B0' },
+    'H': { axis: 'z', val: -1, color: '#FF70B8' }
 };
 
 const CELLS = Object.keys(CELL_DEFS);
 const FACES = ['u','v','w','x','y','z'];
 
 const FACE_AXIS = {
-    'u': { axis: 'y', val:  1 },  // +Y face
-    'v': { axis: 'y', val: -1 },  // -Y face
-    'w': { axis: 'z', val:  1 },  // +Z face
-    'x': { axis: 'z', val: -1 },  // -Z face
-    'y': { axis: 'x', val:  1 },  // +X face
-    'z': { axis: 'x', val: -1 }   // -X face
+    'u': { axis: 'y', val:  1 },
+    'v': { axis: 'y', val: -1 },
+    'w': { axis: 'z', val:  1 },
+    'x': { axis: 'z', val: -1 },
+    'y': { axis: 'x', val:  1 },
+    'z': { axis: 'x', val: -1 }
 };
 
 // ============================================================
-// 2. PIECES: 80 visible pieces of 3×3×3×3
+// 2. PIECES
 // ============================================================
-// Coordinates: x,y,z,w ∈ {-1, 0, 1}
-// Excluding (0,0,0,0) which is the hidden hypercenter
-// Piece types:
-//   - Corners: 16 pieces (no zeros) - 4 stickers each
-//   - Edges: 32 pieces (one zero) - 3 stickers each
-//   - Face centers: 24 pieces (two zeros) - 2 stickers each
-//   - Cell centers: 8 pieces (three zeros) - 1 sticker each
-
 let pieces = [];
 let moveHistory = [];
 let moveLog = [];
@@ -47,12 +39,9 @@ function initPieces() {
         for (let y of coords) {
             for (let z of coords) {
                 for (let w of coords) {
-                    // Skip the hidden center
                     if (x === 0 && y === 0 && z === 0 && w === 0) continue;
                     
                     const homeCoord = { x, y, z, w };
-                    
-                    // Determine piece type and home cell
                     const zeroCount = [x, y, z, w].filter(v => v === 0).length;
                     let pieceType;
                     if (zeroCount === 0) pieceType = 'corner';
@@ -60,9 +49,6 @@ function initPieces() {
                     else if (zeroCount === 2) pieceType = 'faceCenter';
                     else pieceType = 'cellCenter';
                     
-                    // Determine home cell (which cell does this piece belong to?)
-                    // A piece belongs to multiple cells if it's on a boundary
-                    // For simplicity, we assign it to the cell with highest priority
                     let homeCell = null;
                     for (let [cell, def] of Object.entries(CELL_DEFS)) {
                         const axisIdx = axisToIndex(def.axis);
@@ -73,8 +59,6 @@ function initPieces() {
                         }
                     }
                     
-                    // Determine which stickers this piece has
-                    // A piece has a sticker for each non-zero coordinate
                     const stickers = [];
                     if (x !== 0) stickers.push({ axis: 'x', dir: x });
                     if (y !== 0) stickers.push({ axis: 'y', dir: y });
@@ -86,14 +70,12 @@ function initPieces() {
                         currentCoord: { ...homeCoord },
                         homeCell: homeCell,
                         pieceType: pieceType,
-                        stickers: stickers  // Original sticker orientations
+                        stickers: stickers
                     });
                 }
             }
         }
     }
-    
-    console.log(`Initialized ${pieces.length} pieces`);
 }
 
 function axisToIndex(axis) {
@@ -105,7 +87,6 @@ function axisToIndex(axis) {
 // ============================================================
 function rotateCoord(coord, plane, dir) {
     const newCoord = { ...coord };
-    
     const axes = {
         'xy': ['x', 'y'],
         'xz': ['x', 'z'],
@@ -119,10 +100,10 @@ function rotateCoord(coord, plane, dir) {
     const u = coord[a1];
     const v = coord[a2];
     
-    if (dir === 1) {  // CCW
+    if (dir === 1) {
         newCoord[a1] = -v;
         newCoord[a2] = u;
-    } else {  // CW
+    } else {
         newCoord[a1] = v;
         newCoord[a2] = -u;
     }
@@ -130,7 +111,6 @@ function rotateCoord(coord, plane, dir) {
     return newCoord;
 }
 
-// Rotate sticker orientations
 function rotateSticker(sticker, plane, dir) {
     const newSticker = { ...sticker };
     const axes = {
@@ -157,21 +137,17 @@ function rotateSticker(sticker, plane, dir) {
 }
 
 function applyMove(plane, dir, moveName) {
-    // Save state for undo
     const snapshot = pieces.map(p => ({ 
         currentCoord: { ...p.currentCoord },
         stickers: p.stickers.map(s => ({ ...s }))
     }));
     moveHistory.push(snapshot);
     
-    // Apply rotation to all pieces
     for (let piece of pieces) {
         piece.currentCoord = rotateCoord(piece.currentCoord, plane, dir);
-        // Also rotate sticker orientations
         piece.stickers = piece.stickers.map(s => rotateSticker(s, plane, dir));
     }
     
-    // Log the move
     moveLog = [`🌀 ${moveName}`];
     let changedCount = 0;
     for (let p of pieces) {
@@ -199,7 +175,7 @@ function getCellFromCoord(coord) {
 }
 
 // ============================================================
-// 4. RENDERING (3×3 grids)
+// 4. RENDERING
 // ============================================================
 function renderDashboard() {
     const container = document.getElementById('dashboard');
@@ -219,40 +195,28 @@ function renderDashboard() {
             faceDiv.innerHTML = `<div class="face-label">${face}</div><div class="grid-3x3"></div>`;
             const gridDiv = faceDiv.querySelector('.grid-3x3');
             
-            // For 3×3×3×3, we need to find 9 pieces for each face
-            // The cell fixes one coordinate, the face fixes another
-            // The remaining 2 coordinates vary: -1, 0, +1
-            
             const fixedCoords = {};
             fixedCoords[cellDef.axis] = cellDef.val;
             fixedCoords[faceDef.axis] = faceDef.val;
             
-            // The two varying axes
             const allAxes = ['x', 'y', 'z'];
             let varyingAxes = allAxes.filter(a => a !== cellDef.axis && a !== faceDef.axis);
             
-            // If w is not fixed, it varies too
             if (cellDef.axis !== 'w' && faceDef.axis !== 'w') {
                 varyingAxes.push('w');
             }
             
-            // For a 3×3 face, we need 3×3 = 9 combinations
             const values = [-1, 0, 1];
             const stickers = [];
             
             for (let v1 of values) {
                 for (let v2 of values) {
                     const coord = { x: 0, y: 0, z: 0, w: 0 };
-                    
-                    // Set fixed coordinates
                     coord[cellDef.axis] = cellDef.val;
                     coord[faceDef.axis] = faceDef.val;
-                    
-                    // Set varying coordinates
                     if (varyingAxes.length >= 1) coord[varyingAxes[0]] = v1;
                     if (varyingAxes.length >= 2) coord[varyingAxes[1]] = v2;
                     
-                    // Find the piece at this coordinate
                     const piece = pieces.find(p =>
                         p.currentCoord.x === coord.x &&
                         p.currentCoord.y === coord.y &&
@@ -260,15 +224,12 @@ function renderDashboard() {
                         p.currentCoord.w === coord.w
                     );
                     
-                    // Determine which sticker of this piece is visible on this face
                     let homeCell = null;
                     if (piece) {
-                        // The visible sticker is the one pointing in the face direction
                         const visibleSticker = piece.stickers.find(s => 
                             s.axis === faceDef.axis && s.dir === faceDef.val
                         );
                         if (visibleSticker) {
-                            // Find which cell this sticker belongs to
                             for (let [c, def] of Object.entries(CELL_DEFS)) {
                                 if (def.axis === visibleSticker.axis && def.val === visibleSticker.dir) {
                                     homeCell = c;
@@ -276,7 +237,6 @@ function renderDashboard() {
                                 }
                             }
                         } else {
-                            // Fallback: use piece's home cell
                             homeCell = piece.homeCell;
                         }
                     }
@@ -285,7 +245,6 @@ function renderDashboard() {
                 }
             }
             
-            // Create 3×3 grid
             for (let i = 0; i < 9; i++) {
                 const sticker = document.createElement('div');
                 sticker.className = 'sticker';
@@ -351,7 +310,8 @@ function scramble(numMoves = 20) {
 function reset() {
     for (let piece of pieces) {
         piece.currentCoord = { ...piece.homeCoord };
-        piece.stickers = piece.homeCoord.x !== 0 ? [{ axis: 'x', dir: piece.homeCoord.x }] : [];
+        piece.stickers = [];
+        if (piece.homeCoord.x !== 0) piece.stickers.push({ axis: 'x', dir: piece.homeCoord.x });
         if (piece.homeCoord.y !== 0) piece.stickers.push({ axis: 'y', dir: piece.homeCoord.y });
         if (piece.homeCoord.z !== 0) piece.stickers.push({ axis: 'z', dir: piece.homeCoord.z });
         if (piece.homeCoord.w !== 0) piece.stickers.push({ axis: 'w', dir: piece.homeCoord.w });
@@ -427,7 +387,198 @@ function buildMoveButtons() {
 }
 
 // ============================================================
-// 7. INITIALIZE
+// 7. ZOOM FEATURE
+// ============================================================
+let currentZoomedCell = null;
+
+function zoomInCell(cellName) {
+    currentZoomedCell = cellName;
+    const cellDef = CELL_DEFS[cellName];
+    
+    document.getElementById('dashboard').style.display = 'none';
+    document.getElementById('zoomedView').classList.add('active');
+    
+    document.getElementById('zoomedTitle').textContent = `Cell ${cellName}`;
+    document.getElementById('zoomedTitle').style.color = cellDef.color;
+    
+    renderCrossLayout(cellName);
+    renderSidebar(cellName);
+    
+    moveLog = [`🔍 Zoomed into Cell ${cellName}`];
+    updateLog();
+}
+
+function zoomOut() {
+    currentZoomedCell = null;
+    document.getElementById('dashboard').style.display = 'grid';
+    document.getElementById('zoomedView').classList.remove('active');
+    moveLog = ['🔍 Back to overview'];
+    updateLog();
+}
+
+function renderCrossLayout(cellName) {
+    const container = document.getElementById('crossLayout');
+    container.innerHTML = '';
+    
+    const faceOrder = [
+        { face: 'u', position: 'top' },
+        { face: 'x', position: 'left' },
+        { face: 'y', position: 'center' },
+        { face: 'w', position: 'right' },
+        { face: 'v', position: 'bottom' },
+        { face: 'z', position: 'back' }
+    ];
+    
+    for (let { face, position } of faceOrder) {
+        const faceDiv = document.createElement('div');
+        faceDiv.className = `cross-face ${position}`;
+        faceDiv.innerHTML = `<div class="face-label">${face}</div><div class="grid-3x3"></div>`;
+        const gridDiv = faceDiv.querySelector('.grid-3x3');
+        
+        const stickers = getFaceStickers(cellName, face);
+        for (let i = 0; i < 9; i++) {
+            const sticker = document.createElement('div');
+            sticker.className = 'sticker';
+            const homeCell = stickers[i];
+            sticker.style.backgroundColor = homeCell ? CELL_DEFS[homeCell].color : '#2c2c3a';
+            sticker.textContent = homeCell || '';
+            gridDiv.appendChild(sticker);
+        }
+        
+        container.appendChild(faceDiv);
+    }
+}
+
+function renderSidebar(excludeCell) {
+    const container = document.getElementById('sidebarCells');
+    container.innerHTML = '';
+    
+    for (let cell of CELLS) {
+        if (cell === excludeCell) continue;
+        
+        const cellDef = CELL_DEFS[cell];
+        const cellDiv = document.createElement('div');
+        cellDiv.className = 'sidebar-cell';
+        cellDiv.onclick = () => zoomInCell(cell);
+        cellDiv.innerHTML = `<div class="sidebar-cell-title" style="color:${cellDef.color}">${cell}</div><div class="sidebar-faces"></div>`;
+        const facesDiv = cellDiv.querySelector('.sidebar-faces');
+        
+        for (let face of FACES) {
+            const faceDiv = document.createElement('div');
+            faceDiv.className = 'sidebar-face';
+            faceDiv.innerHTML = `<div class="grid-3x3"></div>`;
+            const gridDiv = faceDiv.querySelector('.grid-3x3');
+            
+            const stickers = getFaceStickers(cell, face);
+            for (let i = 0; i < 9; i++) {
+                const sticker = document.createElement('div');
+                sticker.className = 'sticker';
+                const homeCell = stickers[i];
+                sticker.style.backgroundColor = homeCell ? CELL_DEFS[homeCell].color : '#2c2c3a';
+                gridDiv.appendChild(sticker);
+            }
+            
+            facesDiv.appendChild(faceDiv);
+        }
+        
+        container.appendChild(cellDiv);
+    }
+}
+
+function getFaceStickers(cellName, faceName) {
+    const cellDef = CELL_DEFS[cellName];
+    const faceDef = FACE_AXIS[faceName];
+    
+    const fixedCoords = {};
+    fixedCoords[cellDef.axis] = cellDef.val;
+    fixedCoords[faceDef.axis] = faceDef.val;
+    
+    const allAxes = ['x', 'y', 'z'];
+    let varyingAxes = allAxes.filter(a => a !== cellDef.axis && a !== faceDef.axis);
+    
+    if (cellDef.axis !== 'w' && faceDef.axis !== 'w') {
+        varyingAxes.push('w');
+    }
+    
+    const values = [-1, 0, 1];
+    const stickers = [];
+    
+    for (let v1 of values) {
+        for (let v2 of values) {
+            const coord = { x: 0, y: 0, z: 0, w: 0 };
+            coord[cellDef.axis] = cellDef.val;
+            coord[faceDef.axis] = faceDef.val;
+            if (varyingAxes.length >= 1) coord[varyingAxes[0]] = v1;
+            if (varyingAxes.length >= 2) coord[varyingAxes[1]] = v2;
+            
+            const piece = pieces.find(p =>
+                p.currentCoord.x === coord.x &&
+                p.currentCoord.y === coord.y &&
+                p.currentCoord.z === coord.z &&
+                p.currentCoord.w === coord.w
+            );
+            
+            let homeCell = null;
+            if (piece) {
+                const visibleSticker = piece.stickers.find(s => 
+                    s.axis === faceDef.axis && s.dir === faceDef.val
+                );
+                if (visibleSticker) {
+                    for (let [c, def] of Object.entries(CELL_DEFS)) {
+                        if (def.axis === visibleSticker.axis && def.val === visibleSticker.dir) {
+                            homeCell = c;
+                            break;
+                        }
+                    }
+                } else {
+                    homeCell = piece.homeCell;
+                }
+            }
+            
+            stickers.push(homeCell);
+        }
+    }
+    
+    return stickers;
+}
+
+function makeCellsClickable() {
+    const cells = document.querySelectorAll('.cell');
+    cells.forEach(cellDiv => {
+        cellDiv.onclick = () => {
+            const cellName = cellDiv.querySelector('.cell-title').textContent.trim();
+            zoomInCell(cellName);
+        };
+    });
+}
+
+function enableZoomFeature() {
+    if (typeof renderDashboard !== 'undefined') {
+        const originalRenderDashboard = renderDashboard;
+        
+        window.renderDashboard = function() {
+            originalRenderDashboard();
+            makeCellsClickable();
+            
+            if (currentZoomedCell) {
+                renderCrossLayout(currentZoomedCell);
+                renderSidebar(currentZoomedCell);
+            }
+        };
+        
+        const backBtn = document.getElementById('backBtn');
+        if (backBtn) {
+            backBtn.onclick = zoomOut;
+        }
+        
+        console.log('✅ Zoom feature enabled');
+    } else {
+        console.error('❌ renderDashboard not found!');
+    }
+}
+
+// ============================================================
+// 8. INITIALIZATION
 // ============================================================
 initPieces();
 buildMoveButtons();
@@ -438,3 +589,4 @@ document.getElementById('resetBtn').onclick = reset;
 document.getElementById('undoBtn').onclick = undo;
 
 updateLog();
+enableZoomFeature();
