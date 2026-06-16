@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>4D Hypercube (2×2×2×2) – True Piece‑Based</title>
+    <title>4D Hypercube (2×2×2×2) – WORKING VERSION</title>
     <style>
         * { box-sizing: border-box; }
         body { background: #1a1a2e; font-family: 'Segoe UI', monospace; color: white; padding: 20px; margin: 0; }
         h1 { font-size: 1.4rem; text-align: center; margin: 0 0 5px; }
         .sub { text-align: center; font-size: 0.8rem; color: #aaa; margin-bottom: 20px; }
-        .controls { text-align: center; margin-bottom: 20px; }
-        button { background: #0f3460; border: none; color: white; padding: 8px 16px; margin: 5px; border-radius: 8px; cursor: pointer; font-family: monospace; font-weight: bold; }
+        .controls { text-align: center; margin-bottom: 20px; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+        button { background: #0f3460; border: none; color: white; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-family: monospace; font-weight: bold; }
         button:hover { background: #1a4a7a; }
         .dashboard { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; max-width: 1400px; margin: 0 auto; }
         .cell { background: #0f0f1a; border-radius: 16px; padding: 12px; border: 1px solid #2a2a4a; }
@@ -24,24 +24,22 @@
         @media (max-width: 900px) { .dashboard { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 550px) { .dashboard { grid-template-columns: 1fr; } }
         .log { background: #0f0f1a; padding: 10px; margin-top: 20px; border-radius: 8px; max-height: 150px; overflow-y: auto; font-size: 0.8rem; font-family: monospace; }
+        .move-group { display: inline-flex; flex-wrap: wrap; justify-content: center; gap: 6px; background: #16213e; padding: 6px 12px; border-radius: 30px; margin: 4px; }
     </style>
 </head>
 <body>
-<h1>🌀 4D HYPERCUBE (2×2×2×2) – TRUE PIECE‑BASED 🌀</h1>
-<div class="sub">16 corner pieces | 4D rotations in XW, YW, ZW planes | click a move → all pieces move</div>
+<h1>🌀 4D HYPERCUBE (2×2×2×2) – WORKING VERSION 🌀</h1>
+<div class="sub">16 corner pieces | 6 rotation planes | real 4D geometry</div>
+<div class="controls" id="movePanel"></div>
 <div class="controls">
-    <button id="scramble">🎲 Scramble (20 moves)</button>
-    <button id="reset">🔁 Reset</button>
-    <button id="undo">↩️ Undo</button>
-    <br>
-    <button id="moveXWp">XW+</button> <button id="moveXWm">XW-</button>
-    <button id="moveYWp">YW+</button> <button id="moveYWm">YW-</button>
-    <button id="moveZWp">ZW+</button> <button id="moveZWm">ZW-</button>
+    <button id="scrambleBtn">🎲 Scramble (20)</button>
+    <button id="resetBtn">🔁 Reset</button>
+    <button id="undoBtn">↩️ Undo</button>
 </div>
 <div id="dashboard" class="dashboard"></div>
-<div class="log" id="logPanel">📋 Move log will appear here.</div>
-<div class="footer">Each colored square = sticker. Color = piece's home cell. Moves rotate the 4D coordinates of all pieces.</div>
+<div id="logPanel" class="log">📋 Ready.</div>
+<div class="footer">Color = piece's home cell. Moves rotate 4D coordinates.</div>
 
-<script src="hypercube.js"></script>
+<script src="js/hypercube.js"></script>
 </body>
 </html>

@@ -1,37 +1,70 @@
-// ---------- 1. CONSTANTS ----------
-const CELLS = ['A','B','C','D','E','F','G','H'];
-const FACES = ['u','v','w','x','y','z'];
-const CELL_COLORS = {
-    'A':'#E63946','B':'#F4A261','C':'#E9C46A','D':'#2A9D8F',
-    'E':'#2E8B57','F':'#4895EF','G':'#9C27B0','H':'#FF70B8'
-};
-// Which 4D cell does each letter correspond to? (x,y,z,w) each ±1
-const CELL_SIGNS = {
-    'A':[-1,-1,-1,-1], 'B':[ 1,-1,-1,-1], 'C':[-1, 1,-1,-1], 'D':[ 1, 1,-1,-1],
-    'E':[-1,-1, 1,-1], 'F':[ 1,-1, 1,-1], 'G':[-1, 1, 1,-1], 'H':[ 1, 1, 1, 1]
+// ============================================================
+// 1. CELL DEFINITIONS (each cell is a 3D region in 4D space)
+// ============================================================
+// A cell is defined by fixing ONE coordinate (axis) to ONE value (±1)
+// The other 3 coordinates can vary (±1 each), giving 8 pieces per cell
+
+const CELL_DEFS = {
+    'A': { axis: 'w', val: -1, color: '#E63946' },   // W- cell
+    'B': { axis: 'x', val:  1, color: '#F4A261' },   // X+ cell
+    'C': { axis: 'y', val:  1, color: '#E9C46A' },   // Y+ cell
+    'D': { axis: 'x', val: -1, color: '#2A9D8F' },   // X- cell
+    'E': { axis: 'z', val:  1, color: '#2E8B57' },   // Z+ cell
+    'F': { axis: 'w', val:  1, color: '#4895EF' },   // W+ cell
+    'G': { axis: 'y', val: -1, color: '#9C27B0' },   // Y- cell
+    'H': { axis: 'z', val: -1, color: '#FF70B8' }    // Z- cell
 };
 
-// ---------- 2. PIECE MODEL ----------
-let pieces = [];           // each: { homeCoord, currentCoord, homeCell }
-let history = [];
+const CELLS = Object.keys(CELL_DEFS);
+const FACES = ['u','v','w','x','y','z'];
+
+// Map face names to axis directions (for the 3D cube faces)
+const FACE_AXIS = {
+    'u': { axis: 'y', val:  1 },  // +Y face
+    'v': { axis: 'y', val: -1 },  // -Y face
+    'w': { axis: 'z', val:  1 },  // +Z face
+    'x': { axis: 'z', val: -1 },  // -Z face
+    'y': { axis: 'x', val:  1 },  // +X face
+    'z': { axis: 'x', val: -1 }   // -X face
+};
+
+// ============================================================
+// 2. PIECES: 16 corners of the tesseract
+// ============================================================
+// Each piece has:
+//   - homeCoord: its original position (x,y,z,w) where each is ±1
+//   - currentCoord: where it is now after moves
+//   - homeCell: which cell it "belongs to" (based on homeCoord)
+
+let pieces = [];
+let moveHistory = [];
 let moveLog = [];
 
 function initPieces() {
     pieces = [];
     const signs = [-1, 1];
+    
     for (let x of signs) {
         for (let y of signs) {
             for (let z of signs) {
                 for (let w of signs) {
-                    const home = { x, y, z, w };
-                    // Determine home cell letter from these signs
-                    const homeCell = Object.keys(CELL_SIGNS).find(cell =>
-                        CELL_SIGNS[cell][0] === x && CELL_SIGNS[cell][1] === y &&
-                        CELL_SIGNS[cell][2] === z && CELL_SIGNS[cell][3] === w
-                    );
+                    const homeCoord = { x, y, z, w };
+                    
+                    // Determine home cell: which cell's fixed coordinate does this piece match?
+                    // A piece belongs to the cell where its coordinate matches the cell's fixed axis/val
+                    let homeCell = null;
+                    for (let [cell, def] of Object.entries(CELL_DEFS)) {
+                        const axisIdx = axisToIndex(def.axis);
+                        const coordVal = [homeCoord.x, homeCoord.y, homeCoord.z, homeCoord.w][axisIdx];
+                        if (coordVal === def.val) {
+                            homeCell = cell;
+                            break;
+                        }
+                    }
+                    
                     pieces.push({
-                        homeCoord: { ...home },
-                        currentCoord: { ...home },
+                        homeCoord: { ...homeCoord },
+                        currentCoord: { ...homeCoord },
                         homeCell: homeCell
                     });
                 }
@@ -40,195 +73,308 @@ function initPieces() {
     }
 }
 
-// ---------- 3. 4D ROTATION ----------
-function rotateCoord(coord, axis1, axis2, dir) {
-    // axis1, axis2 are 0..3 (x,y,z,w). dir = 1 for CCW, -1 for CW.
-    let newCoord = { ...coord };
-    const u = coord[axis1];
-    const v = coord[axis2];
-    if (dir === 1) {
-        newCoord[axis1] = -v;
-        newCoord[axis2] = u;
-    } else {
-        newCoord[axis1] = v;
-        newCoord[axis2] = -u;
+function axisToIndex(axis) {
+    return { 'x': 0, 'y': 1, 'z': 2, 'w': 3 }[axis];
+}
+
+// ============================================================
+// 3. 4D ROTATION
+// ============================================================
+// Rotating in a 2D plane (e.g., XY) means:
+//   - The two axes in the plane rotate into each other
+//   - The other two axes stay fixed
+//   - This is a 90° rotation: (u, v) → (-v, u) for CCW, (v, -u) for CW
+
+function rotateCoord(coord, plane, dir) {
+    const newCoord = { ...coord };
+    
+    const axes = {
+        'xy': ['x', 'y'],
+        'xz': ['x', 'z'],
+        'xw': ['x', 'w'],
+        'yz': ['y', 'z'],
+        'yw': ['y', 'w'],
+        'zw': ['z', 'w']
+    };
+    
+    const [a1, a2] = axes[plane];
+    const u = coord[a1];
+    const v = coord[a2];
+    
+    if (dir === 1) {  // CCW
+        newCoord[a1] = -v;
+        newCoord[a2] = u;
+    } else {  // CW
+        newCoord[a1] = v;
+        newCoord[a2] = -u;
     }
+    
     return newCoord;
 }
 
-function applyMove(axis1, axis2, dir, moveName) {
+function applyMove(plane, dir, moveName) {
     // Save state for undo
-    history.push(JSON.parse(JSON.stringify(pieces.map(p => p.currentCoord))));
-    moveLog = [];
-
+    const snapshot = pieces.map(p => ({ ...p.currentCoord }));
+    moveHistory.push(snapshot);
+    
     // Apply rotation to all pieces
     for (let piece of pieces) {
-        const newPos = rotateCoord(piece.currentCoord, axis1, axis2, dir);
-        piece.currentCoord = newPos;
+        piece.currentCoord = rotateCoord(piece.currentCoord, plane, dir);
     }
-
-    // Generate log: show a few sample piece movements
-    moveLog.push(`🌀 Applied ${moveName}`);
-    const samplePieces = pieces.slice(0, 6);
-    for (let p of samplePieces) {
-        const home = p.homeCell;
-        const now = getCellFromCoord(p.currentCoord);
-        if (home !== now) {
-            moveLog.push(`  Piece from ${home} moved to ${now}`);
+    
+    // Log the move
+    moveLog = [`🌀 ${moveName}`];
+    let changedCount = 0;
+    for (let p of pieces) {
+        const oldCell = getCellFromCoord(p.homeCoord); // Where it started
+        const newCell = getCellFromCoord(p.currentCoord); // Where it is now
+        if (oldCell !== newCell && changedCount < 5) {
+            moveLog.push(`  ${oldCell}→${newCell}`);
+            changedCount++;
         }
     }
-    if (moveLog.length === 1) moveLog.push("  (some pieces changed cells)");
     
     renderDashboard();
     updateLog();
 }
 
+// Which cell does a coordinate belong to?
+// A piece belongs to the cell whose fixed coordinate it matches
 function getCellFromCoord(coord) {
-    const { x, y, z, w } = coord;
-    const cell = Object.keys(CELL_SIGNS).find(cell =>
-        CELL_SIGNS[cell][0] === x && CELL_SIGNS[cell][1] === y &&
-        CELL_SIGNS[cell][2] === z && CELL_SIGNS[cell][3] === w
-    );
-    return cell;
+    for (let [cell, def] of Object.entries(CELL_DEFS)) {
+        const axisIdx = axisToIndex(def.axis);
+        const coordVal = [coord.x, coord.y, coord.z, coord.w][axisIdx];
+        if (coordVal === def.val) {
+            return cell;
+        }
+    }
+    return null;
 }
 
-// ---------- 4. RENDERING ----------
+// ============================================================
+// 4. RENDERING
+// ============================================================
+// For each cell and face, we need to find the 4 pieces that sit
+// at the corners of that face.
+//
+// A face is defined by:
+//   - The cell it belongs to (which fixes one coordinate)
+//   - The face direction (which fixes another coordinate)
+//   - The remaining 2 coordinates vary (±1 each), giving 4 corners
+
 function renderDashboard() {
     const container = document.getElementById('dashboard');
     container.innerHTML = '';
     
-    for (let cellName of CELLS) {
+    for (let cell of CELLS) {
+        const cellDef = CELL_DEFS[cell];
         const cellDiv = document.createElement('div');
         cellDiv.className = 'cell';
-        cellDiv.innerHTML = `<div class="cell-title" style="color:${CELL_COLORS[cellName]}">${cellName}</div><div class="faces"></div>`;
+        cellDiv.innerHTML = `<div class="cell-title" style="color:${cellDef.color}">${cell}</div><div class="faces"></div>`;
         const facesDiv = cellDiv.querySelector('.faces');
-        const cellSigns = CELL_SIGNS[cellName];
         
-        for (let faceName of FACES) {
+        for (let face of FACES) {
+            const faceDef = FACE_AXIS[face];
             const faceDiv = document.createElement('div');
             faceDiv.className = 'face';
-            faceDiv.innerHTML = `<div class="face-label">${faceName}</div><div class="grid-2x2"></div>`;
+            faceDiv.innerHTML = `<div class="face-label">${face}</div><div class="grid-2x2"></div>`;
             const gridDiv = faceDiv.querySelector('.grid-2x2');
             
-            // Map face name to outward normal axis and sign
-            const faceAxisMap = {
-                'u': { axis: 'y', sign: 1 },   // +Y
-                'v': { axis: 'y', sign: -1 },  // -Y
-                'w': { axis: 'z', sign: 1 },   // +Z
-                'x': { axis: 'z', sign: -1 },  // -Z
-                'y': { axis: 'x', sign: 1 },   // +X
-                'z': { axis: 'x', sign: -1 }    // -X
-            };
-            const { axis, sign } = faceAxisMap[faceName];
-            const axes = ['x','y','z'];
-            const varyingAxes = axes.filter(a => a !== axis);
+            // Find the 4 corner pieces for this face
+            // The cell fixes one coordinate, the face fixes another
+            // The remaining 2 coordinates vary
             
-            // The four corners of this face correspond to the four combinations of the two varying axes
-            const combos = [
-                { [varyingAxes[0]]: -1, [varyingAxes[1]]: -1, rc: [0,0] },
-                { [varyingAxes[0]]: -1, [varyingAxes[1]]:  1, rc: [0,1] },
-                { [varyingAxes[0]]:  1, [varyingAxes[1]]: -1, rc: [1,0] },
-                { [varyingAxes[0]]:  1, [varyingAxes[1]]:  1, rc: [1,1] }
-            ];
+            const fixedCoords = {};
+            fixedCoords[cellDef.axis] = cellDef.val;  // Cell's fixed coordinate
+            fixedCoords[faceDef.axis] = faceDef.val;  // Face's fixed coordinate
             
-            // Temporary storage for the 2x2 grid
-            const stickerColors = [[null,null],[null,null]];
+            // The two varying axes
+            const allAxes = ['x', 'y', 'z'];
+            const varyingAxes = allAxes.filter(a => a !== cellDef.axis && a !== faceDef.axis);
             
-            for (let combo of combos) {
-                // Build expected 4D coordinate for the piece at this corner
-                const expectedCoord = {
-                    x: (axis === 'x' ? sign : (varyingAxes[0] === 'x' ? combo[varyingAxes[0]] : (varyingAxes[1] === 'x' ? combo[varyingAxes[1]] : cellSigns[0]))),
-                    y: (axis === 'y' ? sign : (varyingAxes[0] === 'y' ? combo[varyingAxes[0]] : (varyingAxes[1] === 'y' ? combo[varyingAxes[1]] : cellSigns[1]))),
-                    z: (axis === 'z' ? sign : (varyingAxes[0] === 'z' ? combo[varyingAxes[0]] : (varyingAxes[1] === 'z' ? combo[varyingAxes[1]] : cellSigns[2]))),
-                    w: cellSigns[3]
-                };
-                const piece = pieces.find(p => 
-                    p.currentCoord.x === expectedCoord.x &&
-                    p.currentCoord.y === expectedCoord.y &&
-                    p.currentCoord.z === expectedCoord.z &&
-                    p.currentCoord.w === expectedCoord.w
-                );
-                const color = piece ? CELL_COLORS[piece.homeCell] : '#2c2c3a';
-                const [r,c] = combo.rc;
-                stickerColors[r][c] = color;
+            // If we only have 1 varying axis (because cell and face fix different axes),
+            // we also need to vary the w coordinate if it's not fixed
+            if (varyingAxes.length === 1 && cellDef.axis !== 'w' && faceDef.axis !== 'w') {
+                varyingAxes.push('w');
             }
             
-            // Fill the grid
-            for (let r=0; r<2; r++) {
-                for (let c=0; c<2; c++) {
-                    const sticker = document.createElement('div');
-                    sticker.className = 'sticker';
-                    sticker.style.backgroundColor = stickerColors[r][c];
-                    gridDiv.appendChild(sticker);
+            // Generate 4 combinations of ±1 for the varying axes
+            const combos = [];
+            for (let v1 of [-1, 1]) {
+                for (let v2 of [-1, 1]) {
+                    const combo = {};
+                    combo[varyingAxes[0]] = v1;
+                    combo[varyingAxes[1]] = v2;
+                    combos.push(combo);
                 }
             }
+            
+            // For each combo, build the full coordinate and find the piece
+            const stickers = [];
+            for (let combo of combos) {
+                const coord = { x: 0, y: 0, z: 0, w: 0 };
+                
+                // Set fixed coordinates
+                coord[cellDef.axis] = cellDef.val;
+                coord[faceDef.axis] = faceDef.val;
+                
+                // Set varying coordinates
+                for (let axis of varyingAxes) {
+                    coord[axis] = combo[axis];
+                }
+                
+                // Find the piece at this coordinate
+                const piece = pieces.find(p =>
+                    p.currentCoord.x === coord.x &&
+                    p.currentCoord.y === coord.y &&
+                    p.currentCoord.z === coord.z &&
+                    p.currentCoord.w === coord.w
+                );
+                
+                stickers.push(piece ? piece.homeCell : null);
+            }
+            
+            // Create 2x2 grid
+            for (let i = 0; i < 4; i++) {
+                const sticker = document.createElement('div');
+                sticker.className = 'sticker';
+                const homeCell = stickers[i];
+                sticker.style.backgroundColor = homeCell ? CELL_DEFS[homeCell].color : '#2c2c3a';
+                gridDiv.appendChild(sticker);
+            }
+            
             facesDiv.appendChild(faceDiv);
         }
+        
         container.appendChild(cellDiv);
     }
 }
 
-// ---------- 5. UTILITIES ----------
+// ============================================================
+// 5. UTILITIES
+// ============================================================
 function updateLog() {
     const logDiv = document.getElementById('logPanel');
     if (moveLog.length === 0) {
-        logDiv.innerHTML = '<strong>📋 Move log:</strong><br>No moves yet.';
+        logDiv.innerHTML = '📋 Ready.';
     } else {
         logDiv.innerHTML = '<strong>📋 Move log:</strong><br>' + moveLog.map(m => `• ${m}`).join('<br>');
     }
 }
 
-function scramble(moves=20) {
-    history.push(JSON.parse(JSON.stringify(pieces.map(p => p.currentCoord))));
+function scramble(numMoves = 20) {
+    const snapshot = pieces.map(p => ({ ...p.currentCoord }));
+    moveHistory.push(snapshot);
+    
     const allMoves = [
-        [0,3,1,'XW+'], [0,3,-1,'XW-'],
-        [1,3,1,'YW+'], [1,3,-1,'YW-'],
-        [2,3,1,'ZW+'], [2,3,-1,'ZW-']
+        { plane: 'xy', dir: 1, name: 'XY+' },
+        { plane: 'xy', dir: -1, name: 'XY-' },
+        { plane: 'xz', dir: 1, name: 'XZ+' },
+        { plane: 'xz', dir: -1, name: 'XZ-' },
+        { plane: 'xw', dir: 1, name: 'XW+' },
+        { plane: 'xw', dir: -1, name: 'XW-' },
+        { plane: 'yz', dir: 1, name: 'YZ+' },
+        { plane: 'yz', dir: -1, name: 'YZ-' },
+        { plane: 'yw', dir: 1, name: 'YW+' },
+        { plane: 'yw', dir: -1, name: 'YW-' },
+        { plane: 'zw', dir: 1, name: 'ZW+' },
+        { plane: 'zw', dir: -1, name: 'ZW-' }
     ];
-    for (let i=0; i<moves; i++) {
+    
+    for (let i = 0; i < numMoves; i++) {
         const m = allMoves[Math.floor(Math.random() * allMoves.length)];
         for (let piece of pieces) {
-            piece.currentCoord = rotateCoord(piece.currentCoord, m[0], m[1], m[2]);
+            piece.currentCoord = rotateCoord(piece.currentCoord, m.plane, m.dir);
         }
     }
-    moveLog = [`Scrambled with ${moves} random moves.`];
+    
+    moveLog = [`🎲 Scrambled with ${numMoves} moves`];
     renderDashboard();
     updateLog();
 }
 
 function reset() {
-    history = [];
-    initPieces(); // reset all to home
-    moveLog = ['Reset to solved state.'];
+    for (let piece of pieces) {
+        piece.currentCoord = { ...piece.homeCoord };
+    }
+    moveHistory = [];
+    moveLog = ['🔁 Reset to solved state'];
     renderDashboard();
     updateLog();
 }
 
 function undo() {
-    if (history.length === 0) return;
-    const lastSnapshot = history.pop();
-    for (let i=0; i<pieces.length; i++) {
+    if (moveHistory.length === 0) return;
+    
+    const lastSnapshot = moveHistory.pop();
+    for (let i = 0; i < pieces.length; i++) {
         pieces[i].currentCoord = { ...lastSnapshot[i] };
     }
-    moveLog = ['Undid last move.'];
+    
+    moveLog = ['↩️ Undid last move'];
     renderDashboard();
     updateLog();
 }
 
-// ---------- 6. INITIALIZE AND BIND UI ----------
-document.addEventListener('DOMContentLoaded', () => {
-    initPieces();
-    renderDashboard();
-    updateLog();
+// ============================================================
+// 6. BUILD MOVE BUTTONS
+// ============================================================
+function buildMoveButtons() {
+    const container = document.getElementById('movePanel');
+    container.innerHTML = '';
+    
+    const moveGroups = [
+        { name: 'XY', moves: [
+            { plane: 'xy', dir: 1, name: 'XY+' },
+            { plane: 'xy', dir: -1, name: 'XY-' }
+        ]},
+        { name: 'XZ', moves: [
+            { plane: 'xz', dir: 1, name: 'XZ+' },
+            { plane: 'xz', dir: -1, name: 'XZ-' }
+        ]},
+        { name: 'XW', moves: [
+            { plane: 'xw', dir: 1, name: 'XW+' },
+            { plane: 'xw', dir: -1, name: 'XW-' }
+        ]},
+        { name: 'YZ', moves: [
+            { plane: 'yz', dir: 1, name: 'YZ+' },
+            { plane: 'yz', dir: -1, name: 'YZ-' }
+        ]},
+        { name: 'YW', moves: [
+            { plane: 'yw', dir: 1, name: 'YW+' },
+            { plane: 'yw', dir: -1, name: 'YW-' }
+        ]},
+        { name: 'ZW', moves: [
+            { plane: 'zw', dir: 1, name: 'ZW+' },
+            { plane: 'zw', dir: -1, name: 'ZW-' }
+        ]}
+    ];
+    
+    for (let group of moveGroups) {
+        const groupDiv = document.createElement('div');
+        groupDiv.className = 'move-group';
+        groupDiv.innerHTML = `<span style="margin-right:8px;">${group.name}:</span>`;
+        
+        for (let m of group.moves) {
+            const btn = document.createElement('button');
+            btn.textContent = m.name;
+            btn.onclick = () => applyMove(m.plane, m.dir, m.name);
+            groupDiv.appendChild(btn);
+        }
+        
+        container.appendChild(groupDiv);
+    }
+}
 
-    // Bind buttons
-    document.getElementById('moveXWp').onclick = () => applyMove(0,3,1,'XW+');
-    document.getElementById('moveXWm').onclick = () => applyMove(0,3,-1,'XW-');
-    document.getElementById('moveYWp').onclick = () => applyMove(1,3,1,'YW+');
-    document.getElementById('moveYWm').onclick = () => applyMove(1,3,-1,'YW-');
-    document.getElementById('moveZWp').onclick = () => applyMove(2,3,1,'ZW+');
-    document.getElementById('moveZWm').onclick = () => applyMove(2,3,-1,'ZW-');
-    document.getElementById('scramble').onclick = () => scramble(20);
-    document.getElementById('reset').onclick = reset;
-    document.getElementById('undo').onclick = undo;
-});
+// ============================================================
+// 7. INITIALIZE
+// ============================================================
+initPieces();
+buildMoveButtons();
+renderDashboard();
+
+document.getElementById('scrambleBtn').onclick = () => scramble(20);
+document.getElementById('resetBtn').onclick = reset;
+document.getElementById('undoBtn').onclick = undo;
+
+updateLog();
