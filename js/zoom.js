@@ -1,9 +1,10 @@
 // Handles the zoom-in/zoom-out feature
-import { CELL_DEFS } from './constants.js';
+import { CELL_DEFS, FACE_AXIS } from './constants.js';
 import { state } from './state.js';
-import { renderCrossLayout, renderSidebar } from './renderer.js';
+import { renderCrossLayout, renderSidebar, getFaceStickers } from './renderer.js';
 
 export const currentZoomedCell = { value: null };
+export let currentZoomedFace = { cell: null, face: null };
 
 export function zoomInCell(cellName) {
     currentZoomedCell.value = cellName;
@@ -35,5 +36,157 @@ export function makeCellsClickable() {
             const cellName = cellDiv.querySelector('.cell-title').textContent.trim();
             zoomInCell(cellName);
         };
+    });
+}
+
+// Level 3: Face Zoom Functions
+export function zoomInFace(cellName, faceName) {
+    currentZoomedFace.cell = cellName;
+    currentZoomedFace.face = faceName;
+    
+    const cellDef = CELL_DEFS[cellName];
+    const faceDef = FACE_AXIS[faceName];
+    
+    // Hide cell view, show face view
+    document.getElementById('zoomedView').classList.remove('active');
+    const faceZoomView = document.getElementById('faceZoomView');
+    if (faceZoomView) {
+        faceZoomView.classList.add('active');
+    }
+    
+    // Update title
+    const titleEl = document.getElementById('faceZoomTitle');
+    const subtitleEl = document.getElementById('faceZoomSubtitle');
+    if (titleEl) {
+        titleEl.textContent = `Cell ${cellName} - Face ${faceName}`;
+        titleEl.style.color = cellDef.color;
+    }
+    if (subtitleEl) {
+        subtitleEl.textContent = `Fixed: ${cellDef.axis}=${cellDef.val === 1 ? '+' : '-'}1, ${faceDef.axis}=${faceDef.val === 1 ? '+' : '-'}1`;
+    }
+    
+    // Render large face
+    renderLargeFace(cellName, faceName);
+    
+    // Show details
+    showFaceDetails(cellName, faceName);
+    
+    state.moveLog = [`🔍 Zoomed into ${cellName}-${faceName}`];
+}
+
+export function zoomOutToCell() {
+    currentZoomedFace.cell = null;
+    currentZoomedFace.face = null;
+    const faceZoomView = document.getElementById('faceZoomView');
+    if (faceZoomView) {
+        faceZoomView.classList.remove('active');
+    }
+    document.getElementById('zoomedView').classList.add('active');
+    state.moveLog = ['🔍 Back to cell view'];
+}
+
+function renderLargeFace(cellName, faceName) {
+    const container = document.getElementById('largeFaceGrid');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    const stickers = getFaceStickers(cellName, faceName);
+    for (let i = 0; i < 9; i++) {
+        const sticker = document.createElement('div');
+        sticker.className = 'sticker';
+        const stickerData = stickers[i];
+        
+        if (stickerData.colorCell) {
+            sticker.style.backgroundColor = CELL_DEFS[stickerData.colorCell].color;
+            sticker.textContent = stickerData.pieceId || '';
+            sticker.title = `Piece ${stickerData.pieceId} (from Cell ${stickerData.colorCell})`;
+        } else {
+            sticker.style.backgroundColor = '#2c2c3a';
+        }
+        container.appendChild(sticker);
+    }
+}
+
+function showFaceDetails(cellName, faceName) {
+    const cellDef = CELL_DEFS[cellName];
+    const faceDef = FACE_AXIS[faceName];
+    
+    // Get all pieces on this face
+    const stickers = getFaceStickers(cellName, faceName);
+    const pieceIds = stickers.map(s => s.pieceId).filter(id => id !== null);
+    const homeCells = [...new Set(stickers.map(s => s.colorCell).filter(c => c))];
+    
+    // Show details
+    const detailsContent = document.getElementById('faceDetailsContent');
+    if (detailsContent) {
+        detailsContent.innerHTML = `
+            <div class="detail-row">
+                <span>Cell:</span>
+                <strong>${cellName}</strong>
+            </div>
+            <div class="detail-row">
+                <span>Face:</span>
+                <strong>${faceName} (${faceDef.axis}${faceDef.val === 1 ? '+' : '-'})</strong>
+            </div>
+            <div class="detail-row">
+                <span>Fixed Coordinates:</span>
+                <strong>${cellDef.axis}=${cellDef.val}, ${faceDef.axis}=${faceDef.val}</strong>
+            </div>
+            <div class="detail-row">
+                <span>Piece IDs:</span>
+                <strong>${pieceIds.join(', ')}</strong>
+            </div>
+            <div class="detail-row">
+                <span>Home Cells:</span>
+                <strong>${homeCells.join(', ')}</strong>
+            </div>
+        `;
+    }
+    
+    // Show which rotations affect this face
+    const affectedRotationsDiv = document.getElementById('affectedRotations');
+    if (affectedRotationsDiv) {
+        const affectedPlanes = getAffectedRotations(cellName, faceName);
+        const rotationsHTML = affectedPlanes.map(plane => `
+            <span class="rotation-btn">${plane.toUpperCase()}+</span>
+            <span class="rotation-btn">${plane.toUpperCase()}-</span>
+        `).join('');
+        affectedRotationsDiv.innerHTML = rotationsHTML || '<p>No direct rotations affect this face</p>';
+    }
+}
+
+function getAffectedRotations(cellName, faceName) {
+    const cellDef = CELL_DEFS[cellName];
+    const faceDef = FACE_AXIS[faceName];
+    
+    // A rotation affects this face if it involves one of the fixed axes
+    // but not both fixed axes
+    const fixedAxes = [cellDef.axis, faceDef.axis];
+    const allPlanes = ['xy', 'xz', 'xw', 'yz', 'yw', 'zw'];
+    
+    return allPlanes.filter(plane => {
+        const [a1, a2] = plane.split('');
+        const involvesFixed = fixedAxes.includes(a1) || fixedAxes.includes(a2);
+        const involvesBoth = fixedAxes.includes(a1) && fixedAxes.includes(a2);
+        return involvesFixed && !involvesBoth;
+    });
+}
+
+// Make faces clickable in cross layout
+export function makeFacesClickable() {
+    const crossFaces = document.querySelectorAll('.cross-face');
+    crossFaces.forEach(faceDiv => {
+        const faceLabel = faceDiv.querySelector('.face-label');
+        if (faceLabel) {
+            faceLabel.style.cursor = 'pointer';
+            faceDiv.style.cursor = 'pointer';
+            faceDiv.onclick = (e) => {
+                if (e.target !== faceLabel && !e.target.closest('.face-label')) return;
+                const faceName = faceLabel.textContent;
+                if (currentZoomedCell.value) {
+                    zoomInFace(currentZoomedCell.value, faceName);
+                }
+            };
+        }
     });
 }

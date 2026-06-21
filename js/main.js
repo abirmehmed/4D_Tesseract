@@ -19,4 +19,11 @@ document.getElementById('backBtn').onclick = () => {
     renderAll();
 };
 
+// Add this to your initialization
+document.getElementById('backToCellBtn').onclick = () => {
+    import('./zoom.js').then(zoom => zoom.zoomOutToCell());
+    // Re-render cell view
+    renderAll();
+};
+
 console.log('🚀 4D Hypercube is ready!');

@@ -14,14 +14,18 @@ export function axisToIndex(axis) {
 export function initPieces() {
     state.pieces = [];
     const coords = [-1, 0, 1];
+    let idCounter = 11; // Start our license plates at 11
     
     for (let x of coords) {
         for (let y of coords) {
             for (let z of coords) {
                 for (let w of coords) {
+                    // Skip the hidden center piece
                     if (x === 0 && y === 0 && z === 0 && w === 0) continue;
                     
                     const homeCoord = { x, y, z, w };
+                    
+                    // ... (keep the existing logic for pieceType and homeCell) ...
                     const zeroCount = [x, y, z, w].filter(v => v === 0).length;
                     let pieceType;
                     if (zeroCount === 0) pieceType = 'corner';
@@ -45,12 +49,19 @@ export function initPieces() {
                     if (z !== 0) stickers.push({ axis: 'z', dir: z });
                     if (w !== 0) stickers.push({ axis: 'w', dir: w });
                     
+                    // ADD THE PIECE ID HERE!
+                    // We skip numbers ending in 0 (like 20, 30) to keep it clean
+                    let currentId = idCounter;
+                    if (currentId % 10 === 0) currentId++; 
+                    idCounter++;
+
                     state.pieces.push({
                         homeCoord: { ...homeCoord },
                         currentCoord: { ...homeCoord },
                         homeCell: homeCell,
                         pieceType: pieceType,
-                        stickers: stickers
+                        stickers: stickers,
+                        pieceId: currentId // <--- NEW!
                     });
                 }
             }

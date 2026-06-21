@@ -2,6 +2,7 @@
 import { CELL_DEFS, CELLS, FACES, FACE_AXIS } from './constants.js';
 import { state } from './state.js';
 
+// UPDATED: Now returns an object with BOTH the color cell and the piece ID
 export function getFaceStickers(cellName, faceName) {
     const cellDef = CELL_DEFS[cellName];
     const faceDef = FACE_AXIS[faceName];
@@ -26,7 +27,7 @@ export function getFaceStickers(cellName, faceName) {
                 p.currentCoord.z === coord.z && p.currentCoord.w === coord.w
             );
             
-            let homeCell = null;
+            let colorCell = null;
             if (piece) {
                 const visibleSticker = piece.stickers.find(s => 
                     s.axis === faceDef.axis && s.dir === faceDef.val
@@ -34,15 +35,20 @@ export function getFaceStickers(cellName, faceName) {
                 if (visibleSticker) {
                     for (let [c, def] of Object.entries(CELL_DEFS)) {
                         if (def.axis === visibleSticker.axis && def.val === visibleSticker.dir) {
-                            homeCell = c;
+                            colorCell = c;
                             break;
                         }
                     }
                 } else {
-                    homeCell = piece.homeCell;
+                    colorCell = piece.homeCell;
                 }
             }
-            stickers.push(homeCell);
+            
+            // Push an object containing BOTH the color cell and the piece ID
+            stickers.push({
+                colorCell: colorCell,
+                pieceId: piece ? piece.pieceId : null
+            });
         }
     }
     return stickers;
@@ -70,8 +76,15 @@ export function renderDashboard() {
             for (let i = 0; i < 9; i++) {
                 const sticker = document.createElement('div');
                 sticker.className = 'sticker';
-                const homeCell = stickers[i];
-                sticker.style.backgroundColor = homeCell ? CELL_DEFS[homeCell].color : '#2c2c3a';
+                const stickerData = stickers[i]; // Now an object!
+                
+                if (stickerData.colorCell) {
+                    sticker.style.backgroundColor = CELL_DEFS[stickerData.colorCell].color;
+                    sticker.textContent = stickerData.pieceId || ''; // Show the number!
+                } else {
+                    sticker.style.backgroundColor = '#2c2c3a';
+                    sticker.textContent = '';
+                }
                 gridDiv.appendChild(sticker);
             }
             facesDiv.appendChild(faceDiv);
@@ -103,9 +116,15 @@ export function renderCrossLayout(cellName) {
         for (let i = 0; i < 9; i++) {
             const sticker = document.createElement('div');
             sticker.className = 'sticker';
-            const homeCell = stickers[i];
-            sticker.style.backgroundColor = homeCell ? CELL_DEFS[homeCell].color : '#2c2c3a';
-            sticker.textContent = homeCell || '';
+            const stickerData = stickers[i]; // Now an object!
+            
+            if (stickerData.colorCell) {
+                sticker.style.backgroundColor = CELL_DEFS[stickerData.colorCell].color;
+                sticker.textContent = stickerData.pieceId || '';
+            } else {
+                sticker.style.backgroundColor = '#2c2c3a';
+                sticker.textContent = '';
+            }
             gridDiv.appendChild(sticker);
         }
         container.appendChild(faceDiv);
@@ -136,8 +155,15 @@ export function renderSidebar(excludeCell, onCellClick) {
             for (let i = 0; i < 9; i++) {
                 const sticker = document.createElement('div');
                 sticker.className = 'sticker';
-                const homeCell = stickers[i];
-                sticker.style.backgroundColor = homeCell ? CELL_DEFS[homeCell].color : '#2c2c3a';
+                const stickerData = stickers[i]; // Now an object!
+                
+                if (stickerData.colorCell) {
+                    sticker.style.backgroundColor = CELL_DEFS[stickerData.colorCell].color;
+                    sticker.textContent = stickerData.pieceId || '';
+                } else {
+                    sticker.style.backgroundColor = '#2c2c3a';
+                    sticker.textContent = '';
+                }
                 gridDiv.appendChild(sticker);
             }
             facesDiv.appendChild(faceDiv);

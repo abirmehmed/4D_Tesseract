@@ -37,6 +37,37 @@
     </div>
 </div>
 
+<!-- Level 3: Single Face Zoom -->
+<div id="faceZoomView" class="face-zoom-container">
+    <div class="face-zoom-main">
+        <div class="face-zoom-header">
+            <div>
+                <div class="face-zoom-title" id="faceZoomTitle">Cell A - Face u</div>
+                <div class="face-zoom-subtitle" id="faceZoomSubtitle">Fixed: w=-1, y=+1</div>
+            </div>
+            <button class="back-btn" id="backToCellBtn">← Back to Cell</button>
+        </div>
+        
+        <div class="face-zoom-content">
+            <div class="large-face-grid" id="largeFaceGrid">
+                <!-- 3x3 grid will be rendered here -->
+            </div>
+            
+            <div class="face-details">
+                <h3>📊 Face Details</h3>
+                <div id="faceDetailsContent">
+                    <!-- Details will be shown here -->
+                </div>
+                
+                <h3>🎯 Affected Rotations</h3>
+                <div id="affectedRotations">
+                    <!-- Buttons for rotations that affect this face -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div id="logPanel" class="log">📋 Ready. Click any cell to zoom in.</div>
 <div class="footer">Each colored square = sticker. Color = piece's home cell. Moves rotate 4D coordinates.</div>
 

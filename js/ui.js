@@ -1,6 +1,6 @@
 // Handles user actions: buttons, logs, scramble, reset, undo
 import { state } from './state.js';
-import { applyMove } from './rotation.js';
+import { applyMove, rotateCoord, rotateSticker } from './rotation.js';
 import { renderDashboard, renderCrossLayout, renderSidebar } from './renderer.js';
 import { currentZoomedCell, makeCellsClickable } from './zoom.js';
 
@@ -11,7 +11,9 @@ export function renderAll() {
     
     if (currentZoomedCell.value) {
         renderCrossLayout(currentZoomedCell.value);
-        renderSidebar(currentZoomedCell.value, zoomInCell);
+        renderSidebar(currentZoomedCell.value, (cell) => {
+            import('./zoom.js').then(zoom => zoom.zoomInCell(cell));
+        });
     }
     updateLog();
 }
@@ -72,19 +74,16 @@ export function scramble(numMoves = 20) {
         { plane: 'zw', dir: 1 }, { plane: 'zw', dir: -1 }
     ];
     
-    // Import rotate functions locally to avoid circular dependency
-    import('./rotation.js').then(({ rotateCoord, rotateSticker }) => {
-        for (let i = 0; i < numMoves; i++) {
-            const m = allMoves[Math.floor(Math.random() * allMoves.length)];
-            for (let piece of state.pieces) {
-                piece.currentCoord = rotateCoord(piece.currentCoord, m.plane, m.dir);
-                piece.stickers = piece.stickers.map(s => rotateSticker(s, m.plane, m.dir));
-            }
+    for (let i = 0; i < numMoves; i++) {
+        const m = allMoves[Math.floor(Math.random() * allMoves.length)];
+        for (let piece of state.pieces) {
+            piece.currentCoord = rotateCoord(piece.currentCoord, m.plane, m.dir);
+            piece.stickers = piece.stickers.map(s => rotateSticker(s, m.plane, m.dir));
         }
-        
-        state.moveLog = [`🎲 Scrambled with ${numMoves} moves`];
-        renderAll();
-    });
+    }
+    
+    state.moveLog = [`🎲 Scrambled with ${numMoves} moves`];
+    renderAll();
 }
 
 export function reset() {
@@ -105,12 +104,4 @@ export function undo() {
     
     state.moveLog = ['↩️ Undid last move'];
     renderAll();
-}
-
-// Import zoomInCell to avoid circular dependency
-function zoomInCell(cellName) {
-    import('./zoom.js').then(zoom => {
-        zoom.zoomInCell(cellName);
-        renderAll();
-    });
 }
