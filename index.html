@@ -37,6 +37,8 @@
     </div>
 </div>
 
+
+
 <!-- Level 3: Single Face Zoom -->
 <div id="faceZoomView" class="face-zoom-container">
     <div class="face-zoom-main">
@@ -49,19 +51,18 @@
         </div>
         
         <div class="face-zoom-content">
-            <div class="large-face-grid" id="largeFaceGrid">
-                <!-- 3x3 grid will be rendered here -->
+            <!-- Main: Large 3x3 Grid -->
+            <div class="large-face-viewer">
+                <div class="large-face-grid" id="largeFaceGrid">
+                    <!-- 3x3 grid will be rendered here -->
+                </div>
             </div>
             
-            <div class="face-details">
-                <h3>📊 Face Details</h3>
-                <div id="faceDetailsContent">
-                    <!-- Details will be shown here -->
-                </div>
-                
-                <h3>🎯 Affected Rotations</h3>
-                <div id="affectedRotations">
-                    <!-- Buttons for rotations that affect this face -->
+            <!-- Sidebar: Other 5 Faces -->
+            <div class="face-sidebar">
+                <div class="sidebar-title">Other Faces of This Cell</div>
+                <div id="otherFacesList">
+                    <!-- Other faces will be rendered here -->
                 </div>
             </div>
         </div>

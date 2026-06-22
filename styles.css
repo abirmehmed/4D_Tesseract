@@ -343,6 +343,92 @@ button:hover { background: #1a4a7a; transform: scale(1.05); }
     min-height: 15px;
 }
 
+/* Face Zoom Sidebar Styles */
+.face-zoom-content {
+    display: flex;
+    gap: 30px;
+    align-items: flex-start;
+}
+.large-face-viewer {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #1e1e2a;
+    padding: 40px;
+    border-radius: 16px;
+}
+.large-face-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+}
+.large-face-grid .sticker {
+    width: 120px;
+    height: 120px;
+    font-size: 2.5rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+.face-sidebar {
+    width: 300px;
+    background: #0f0f1a;
+    border-radius: 16px;
+    padding: 20px;
+    border: 1px solid #2a2a4a;
+}
+.face-sidebar .sidebar-title {
+    text-align: center;
+    font-size: 1.1rem;
+    margin-bottom: 20px;
+    color: #88aaff;
+    font-weight: bold;
+}
+.other-face-item {
+    background: #1e1e2a;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+    cursor: pointer;
+    transition: 0.2s;
+    border: 2px solid transparent;
+}
+.other-face-item:hover {
+    border-color: #4a6a9a;
+    transform: translateX(5px);
+}
+.other-face-label {
+    text-align: center;
+    font-size: 1.3rem;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: white;
+}
+.other-face-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 3px;
+}
+.other-face-grid .sticker {
+    width: 30px;
+    height: 30px;
+    font-size: 0.7rem;
+    border-radius: 4px;
+}
+@media (max-width: 1200px) {
+    .face-zoom-content {
+        flex-direction: column;
+    }
+    .face-sidebar {
+        width: 100%;
+    }
+    .large-face-grid .sticker {
+        width: 80px;
+        height: 80px;
+        font-size: 1.5rem;
+    }
+}
+
 @media (max-width: 1200px) { 
     .zoomed-container.active { flex-direction: column; }
     .sidebar { width: 100%; }

@@ -4,7 +4,9 @@ import { applyMove, rotateCoord, rotateSticker } from './rotation.js';
 import { renderDashboard, renderCrossLayout, renderSidebar } from './renderer.js';
 import { currentZoomedCell, makeCellsClickable } from './zoom.js';
 
-// Central render function - called after every state change
+// ============================================================
+// 1. CENTRAL RENDER FUNCTION
+// ============================================================
 export function renderAll() {
     renderDashboard();
     makeCellsClickable();
@@ -14,10 +16,16 @@ export function renderAll() {
         renderSidebar(currentZoomedCell.value, (cell) => {
             import('./zoom.js').then(zoom => zoom.zoomInCell(cell));
         });
+        
+        // 🔥 THIS IS THE NEW LINE THAT MAKES FACES CLICKABLE!
+        import('./zoom.js').then(zoom => zoom.enableFaceClicking());
     }
     updateLog();
 }
 
+// ============================================================
+// 2. LOG UPDATER
+// ============================================================
 export function updateLog() {
     const logDiv = document.getElementById('logPanel');
     if (state.moveLog.length === 0) {
@@ -27,6 +35,9 @@ export function updateLog() {
     }
 }
 
+// ============================================================
+// 3. MOVE BUTTONS
+// ============================================================
 export function buildMoveButtons() {
     const container = document.getElementById('movePanel');
     container.innerHTML = '';
@@ -58,6 +69,9 @@ export function buildMoveButtons() {
     }
 }
 
+// ============================================================
+// 4. SCRAMBLE, RESET, UNDO
+// ============================================================
 export function scramble(numMoves = 20) {
     const snapshot = state.pieces.map(p => ({ 
         currentCoord: { ...p.currentCoord },
