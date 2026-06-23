@@ -16,9 +16,6 @@ export function renderAll() {
         renderSidebar(currentZoomedCell.value, (cell) => {
             import('./zoom.js').then(zoom => zoom.zoomInCell(cell));
         });
-        
-        // 🔥 THIS IS THE NEW LINE THAT MAKES FACES CLICKABLE!
-        import('./zoom.js').then(zoom => zoom.enableFaceClicking());
     }
     updateLog();
 }

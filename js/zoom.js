@@ -1,7 +1,7 @@
 // Handles the zoom-in/zoom-out feature
-import { CELL_DEFS, FACE_AXIS } from './constants.js';
+import { CELL_DEFS, CELLS, FACES, FACE_AXIS } from './constants.js';
 import { state } from './state.js';
-import { renderCrossLayout, renderSidebar, getFaceStickers } from './renderer.js';
+import { getFaceStickers } from './renderer.js';
 
 export const currentZoomedCell = { value: null };
 export let currentZoomedFace = { cell: null, face: null };
@@ -19,8 +19,11 @@ export function zoomInCell(cellName) {
     document.getElementById('zoomedTitle').textContent = `Cell ${cellName}`;
     document.getElementById('zoomedTitle').style.color = cellDef.color;
     
-    renderCrossLayout(cellName);
-    renderSidebar(cellName, zoomInCell);
+    // Import renderer dynamically to avoid circular dependency
+    import('./renderer.js').then(renderer => {
+        renderer.renderCrossLayout(cellName);
+        renderer.renderSidebar(cellName, zoomInCell);
+    });
     
     state.moveLog = [`🔍 Zoomed into Cell ${cellName}`];
 }
@@ -52,14 +55,12 @@ export function zoomInFace(cellName, faceName) {
     const cellDef = CELL_DEFS[cellName];
     const faceDef = FACE_AXIS[faceName];
     
-    // Hide cell view, show face view
     document.getElementById('zoomedView').classList.remove('active');
     const faceZoomView = document.getElementById('faceZoomView');
     if (faceZoomView) {
         faceZoomView.classList.add('active');
     }
     
-    // Update title
     const titleEl = document.getElementById('faceZoomTitle');
     const subtitleEl = document.getElementById('faceZoomSubtitle');
     if (titleEl) {
@@ -70,13 +71,8 @@ export function zoomInFace(cellName, faceName) {
         subtitleEl.textContent = `Fixed: ${cellDef.axis}=${cellDef.val === 1 ? '+' : '-'}1, ${faceDef.axis}=${faceDef.val === 1 ? '+' : '-'}1`;
     }
     
-    // Render large face
     renderLargeFace(cellName, faceName);
-    
-    // Render sidebar with OTHER faces (not the current one)
     renderOtherFacesSidebar(cellName, faceName);
-    
-    // Show details
     showFaceDetails(cellName, faceName);
     
     state.moveLog = [`🔍 Zoomed into ${cellName}-${faceName}`];
@@ -109,7 +105,6 @@ function renderOtherFacesSidebar(cellName, currentFaceName) {
     if (!container) return;
     container.innerHTML = '';
     
-    // Get all faces except the current one
     const otherFaces = FACES.filter(f => f !== currentFaceName);
     
     otherFaces.forEach(faceName => {
@@ -135,7 +130,6 @@ function renderOtherFacesSidebar(cellName, currentFaceName) {
             gridDiv.appendChild(sticker);
         }
         
-        // Make it clickable to switch to that face
         faceDiv.onclick = () => {
             zoomInFace(cellName, faceName);
         };
@@ -155,17 +149,14 @@ export function zoomOutToCell() {
     state.moveLog = ['🔍 Back to cell view'];
 }
 
-
 function showFaceDetails(cellName, faceName) {
     const cellDef = CELL_DEFS[cellName];
     const faceDef = FACE_AXIS[faceName];
     
-    // Get all pieces on this face
     const stickers = getFaceStickers(cellName, faceName);
     const pieceIds = stickers.map(s => s.pieceId).filter(id => id !== null);
     const homeCells = [...new Set(stickers.map(s => s.colorCell).filter(c => c))];
     
-    // Show details
     const detailsContent = document.getElementById('faceDetailsContent');
     if (detailsContent) {
         detailsContent.innerHTML = `
@@ -192,7 +183,6 @@ function showFaceDetails(cellName, faceName) {
         `;
     }
     
-    // Show which rotations affect this face
     const affectedRotationsDiv = document.getElementById('affectedRotations');
     if (affectedRotationsDiv) {
         const affectedPlanes = getAffectedRotations(cellName, faceName);
@@ -208,8 +198,6 @@ function getAffectedRotations(cellName, faceName) {
     const cellDef = CELL_DEFS[cellName];
     const faceDef = FACE_AXIS[faceName];
     
-    // A rotation affects this face if it involves one of the fixed axes
-    // but not both fixed axes
     const fixedAxes = [cellDef.axis, faceDef.axis];
     const allPlanes = ['xy', 'xz', 'xw', 'yz', 'yw', 'zw'];
     
@@ -218,26 +206,5 @@ function getAffectedRotations(cellName, faceName) {
         const involvesFixed = fixedAxes.includes(a1) || fixedAxes.includes(a2);
         const involvesBoth = fixedAxes.includes(a1) && fixedAxes.includes(a2);
         return involvesFixed && !involvesBoth;
-    });
-}
-
-// Make faces clickable in cross layout
-export function enableFaceClicking() {
-    const faceLabels = document.querySelectorAll('.cross-face .face-label');
-    
-    faceLabels.forEach(label => {
-        label.style.cursor = 'pointer';
-        label.style.textDecoration = 'underline';
-        label.title = "Click to zoom into this face!";
-        
-        label.onclick = (e) => {
-            e.stopPropagation();
-            const faceName = label.textContent.trim().toLowerCase();
-            const cellName = currentZoomedCell.value;
-            
-            if (cellName && faceName) {
-                zoomInFace(cellName, faceName);
-            }
-        };
     });
 }

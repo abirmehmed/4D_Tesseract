@@ -264,6 +264,7 @@ button:hover { background: #1a4a7a; transform: scale(1.05); }
     max-width: 800px;
     margin: 0 auto;
 }
+/* DELETE THIS DUPLICATE BLOCK */
 .cross-face {
     background: #1e1e2a;
     border-radius: 12px;
@@ -428,6 +429,7 @@ button:hover { background: #1a4a7a; transform: scale(1.05); }
         font-size: 1.5rem;
     }
 }
+
 
 @media (max-width: 1200px) { 
     .zoomed-container.active { flex-direction: column; }

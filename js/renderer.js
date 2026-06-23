@@ -2,7 +2,6 @@
 import { CELL_DEFS, CELLS, FACES, FACE_AXIS } from './constants.js';
 import { state } from './state.js';
 
-// UPDATED: Now returns an object with BOTH the color cell and the piece ID
 export function getFaceStickers(cellName, faceName) {
     const cellDef = CELL_DEFS[cellName];
     const faceDef = FACE_AXIS[faceName];
@@ -44,7 +43,6 @@ export function getFaceStickers(cellName, faceName) {
                 }
             }
             
-            // Push an object containing BOTH the color cell and the piece ID
             stickers.push({
                 colorCell: colorCell,
                 pieceId: piece ? piece.pieceId : null
@@ -76,11 +74,11 @@ export function renderDashboard() {
             for (let i = 0; i < 9; i++) {
                 const sticker = document.createElement('div');
                 sticker.className = 'sticker';
-                const stickerData = stickers[i]; // Now an object!
+                const stickerData = stickers[i];
                 
                 if (stickerData.colorCell) {
                     sticker.style.backgroundColor = CELL_DEFS[stickerData.colorCell].color;
-                    sticker.textContent = stickerData.pieceId || ''; // Show the number!
+                    sticker.textContent = stickerData.pieceId || '';
                 } else {
                     sticker.style.backgroundColor = '#2c2c3a';
                     sticker.textContent = '';
@@ -109,6 +107,17 @@ export function renderCrossLayout(cellName) {
     for (let { face, position } of faceOrder) {
         const faceDiv = document.createElement('div');
         faceDiv.className = `cross-face ${position}`;
+        
+        // 🔥 MAKE THE ENTIRE FACE CLICKABLE
+        faceDiv.style.cursor = 'pointer';
+        faceDiv.title = `Click to zoom into face ${face}`;
+        faceDiv.onclick = (e) => {
+            e.stopPropagation();
+            import('./zoom.js').then(zoom => {
+                zoom.zoomInFace(cellName, face);
+            });
+        };
+        
         faceDiv.innerHTML = `<div class="face-label">${face}</div><div class="grid-3x3"></div>`;
         const gridDiv = faceDiv.querySelector('.grid-3x3');
         
@@ -116,17 +125,17 @@ export function renderCrossLayout(cellName) {
         for (let i = 0; i < 9; i++) {
             const sticker = document.createElement('div');
             sticker.className = 'sticker';
-            const stickerData = stickers[i]; // Now an object!
+            const stickerData = stickers[i];
             
             if (stickerData.colorCell) {
                 sticker.style.backgroundColor = CELL_DEFS[stickerData.colorCell].color;
                 sticker.textContent = stickerData.pieceId || '';
             } else {
                 sticker.style.backgroundColor = '#2c2c3a';
-                sticker.textContent = '';
             }
             gridDiv.appendChild(sticker);
         }
+        
         container.appendChild(faceDiv);
     }
 }
@@ -155,7 +164,7 @@ export function renderSidebar(excludeCell, onCellClick) {
             for (let i = 0; i < 9; i++) {
                 const sticker = document.createElement('div');
                 sticker.className = 'sticker';
-                const stickerData = stickers[i]; // Now an object!
+                const stickerData = stickers[i];
                 
                 if (stickerData.colorCell) {
                     sticker.style.backgroundColor = CELL_DEFS[stickerData.colorCell].color;
